@@ -39,9 +39,7 @@ public class FrontControllerServlet extends HttpServlet{
         PrintWriter out = resp.getWriter();
         out.println(url);   
         
-        out.println("URL demandée : " + url);       
-        out.println("-------------------------------------");
-        out.println("Contrôleurs détectés par le Framework :");
+        out.println("Classes:");
 
         for(Class<?> cls: this.annotatedClasses){
             out.println(cls.getName());
