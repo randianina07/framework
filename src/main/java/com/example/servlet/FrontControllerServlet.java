@@ -27,6 +27,7 @@ public class FrontControllerServlet extends HttpServlet{
         this.annotatedClasses = Utilitaire.getClassesAnnotated(packageName, AnnotationController.class);
 
         this.methods = Utilitaire.getmethodAnnotated(annotatedClasses);
+    
     }
     
     @Override
