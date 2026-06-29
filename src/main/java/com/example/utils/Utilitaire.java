@@ -1,7 +1,11 @@
 package com.example.utils;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+
+import com.example.annotation.UrlMapping;
 
 public class Utilitaire{
     public static List<Class<?>> scanClassesInPackage(String nom) {
@@ -70,5 +74,24 @@ public class Utilitaire{
         }
      }
      return classes;
+}
+
+public static HashMap<String,Mapping> getmethodAnnotated(List<Class<?>> classes){
+        HashMap<String,Mapping> method = new HashMap<>();
+
+        for (Class<?> cls : classes) {
+            Method[] methods  = cls.getDeclaredMethods();
+            for (Method met : methods) {
+                if(met.isAnnotationPresent(UrlMapping.class)){
+                    UrlMapping annotation = met.getAnnotation(UrlMapping.class);
+                    String url = annotation.value();
+                    Mapping mapping = new Mapping(cls.getName(), met.getName());
+                    method.put(url, mapping);
+                }
+            }
+            
+     }
+
+        return method;
 }
 }
