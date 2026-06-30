@@ -55,8 +55,6 @@ public class FrontControllerServlet extends HttpServlet {
         String requestURI = req.getRequestURI();
         String contextPath = req.getContextPath();
         String pathInfo = requestURI.substring(contextPath.length());
-        
-      
         String httpMethod = req.getMethod();
 
         out.println("URL complète : " + req.getRequestURL().toString());
@@ -73,7 +71,31 @@ public class FrontControllerServlet extends HttpServlet {
             Mapping mapping = this.methods.get(queryKey);
             out.println("Controller : " + mapping.getNomClass());
             out.println("Method : " + mapping.getNomMethod());
+            try {
             
+            Class<?> clazz = Class.forName(mapping.getNomClass());
+
+            Object controllerInstance = clazz.getDeclaredConstructor().newInstance();
+
+            java.lang.reflect.Method methodToInvoke = clazz.getDeclaredMethod(mapping.getNomMethod());
+
+            out.println("method à executer " + mapping.getNomMethod());
+            
+            methodToInvoke.invoke(controllerInstance);
+
+        } catch (ClassNotFoundException e) {
+            out.println(" La classe " + mapping.getNomClass() + " est introuvable.");
+            e.printStackTrace(out);
+        } catch (NoSuchMethodException e) {
+            out.println(" La méthode " + mapping.getNomMethod() + "() n'existe pas dans la classe.");
+            e.printStackTrace(out);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            out.println(" Une exception a été levée dans le contrôleur :");
+            e.getCause().printStackTrace(out); 
+        } catch (Exception e) {
+            out.println(" Erreur générale lors de l'instanciation ou de l'invocation : " + e.getMessage());
+            e.printStackTrace(out);
+        }
         } else {
             out.println(" Route introuvable pour [" + httpMethod + "] " + pathInfo);
             out.println("Voici la liste de toutes les routes disponibles avec leurs méthodes :\n");
@@ -85,10 +107,10 @@ public class FrontControllerServlet extends HttpServlet {
                     MappingKey availableKey = entry.getKey();
                     Mapping mappingDisponible = entry.getValue();
                     
-                    out.println(" -> [" + availableKey.getMethod() + "] URL : " + availableKey.getUrl());
+                    out.println("[" + availableKey.getMethod() + "] URL : " + availableKey.getUrl());
                     out.println("    Class  : " + mappingDisponible.getNomClass());
                     out.println("    Method : " + mappingDisponible.getNomMethod());
-                    out.println("--------------------------------------------------");
+                    out.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
                 }
             }
         }
