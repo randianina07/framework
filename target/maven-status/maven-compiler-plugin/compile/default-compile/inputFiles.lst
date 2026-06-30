@@ -2,5 +2,6 @@
 /home/randi/programmation/spring/framework/framework/src/main/java/com/example/utils/Utilitaire.java
 /home/randi/programmation/spring/framework/framework/src/main/java/com/example/App.java
 /home/randi/programmation/spring/framework/framework/src/main/java/com/example/utils/Mapping.java
+/home/randi/programmation/spring/framework/framework/src/main/java/com/example/utils/MappingKey.java
 /home/randi/programmation/spring/framework/framework/src/main/java/com/example/annotation/UrlMapping.java
 /home/randi/programmation/spring/framework/framework/src/main/java/com/example/annotation/AnnotationController.java
