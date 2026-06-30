@@ -1,6 +1,6 @@
 package com.example.utils;
 
-import java.lang.reflect.Method;
+//import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -75,23 +75,37 @@ public class Utilitaire{
      }
      return classes;
 }
+public static HashMap<MappingKey, Mapping> getmethodAnnotated(List<Class<?>> classes) {
+    HashMap<MappingKey, Mapping> methodMap = new HashMap<>();
 
-public static HashMap<String,Mapping> getmethodAnnotated(List<Class<?>> classes){
-        HashMap<String,Mapping> method = new HashMap<>();
-
-        for (Class<?> cls : classes) {
-            Method[] methods  = cls.getDeclaredMethods();
-            for (Method met : methods) {
-                if(met.isAnnotationPresent(UrlMapping.class)){
-                    UrlMapping annotation = met.getAnnotation(UrlMapping.class);
-                    String url = annotation.value();
-                    Mapping mapping = new Mapping(cls.getName(), met.getName());
-                    method.put(url, mapping);
-                }
-            }
+    for (Class<?> cls : classes) {
+        java.lang.reflect.Method[] methods = cls.getDeclaredMethods();
+        for (java.lang.reflect.Method met : methods) {
             
-     }
+            if (met.isAnnotationPresent(UrlMapping.class)) {
+                UrlMapping annotation = met.getAnnotation(UrlMapping.class);
+                
+                // 1. On extrait les données de l'annotation
+                String url = annotation.value();
+                String httpMethod = annotation.method(); // Récupère "GET" ou "POST"
+                
+                // 2. On instancie la clé composite (URL + VERBE)
+                MappingKey key = new MappingKey(url, httpMethod);
+                
+                // 3. On instancie l'objet de stockage avec la classe et le nom de la méthode
+                Mapping mapping = new Mapping(cls.getName(), met.getName());
+                
+                // 4. On vérifie la présence du doublon sur la Map globale
+                if (methodMap.containsKey(key)) {
+                    throw new IllegalArgumentException("L'URL '" + url + "' avec la méthode '" + httpMethod + "' est déjà associée à un autre contrôleur !");
+                }
+                
+                // 5. Tout est bon, on enregistre
+                methodMap.put(key, mapping);
+            }
+        }
+    }
 
-        return method;
+    return methodMap;
 }
 }

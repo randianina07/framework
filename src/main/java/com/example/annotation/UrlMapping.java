@@ -8,5 +8,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface UrlMapping {
-    String value();
+    String value() default  "";
+    String method() default "GET";
 }
