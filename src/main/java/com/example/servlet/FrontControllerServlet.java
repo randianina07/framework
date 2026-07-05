@@ -7,7 +7,7 @@ import java.util.List;
 
 import com.example.annotation.AnnotationController;
 import com.example.utils.Mapping;
-import com.example.utils.MappingKey; 
+import com.example.utils.UrlMethod; 
 import com.example.utils.Utilitaire;
 
 import jakarta.servlet.ServletException;
@@ -18,7 +18,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class FrontControllerServlet extends HttpServlet {
     private List<Class<?>> annotatedClasses;
   
-    private HashMap<MappingKey, Mapping> methods;
+    private HashMap<UrlMethod, Mapping> methods;
 
     @Override
     public void init() throws ServletException {
@@ -33,7 +33,7 @@ public class FrontControllerServlet extends HttpServlet {
 
         this.annotatedClasses = Utilitaire.getClassesAnnotated(packageName, AnnotationController.class);
 
-        // Cette méthode renvoie désormais une HashMap<MappingKey, Mapping>
+        // Cette méthode renvoie désormais une HashMap<UrlMethod, Mapping>
         this.methods = Utilitaire.getmethodAnnotated(annotatedClasses);
     }
     
@@ -65,7 +65,7 @@ public class FrontControllerServlet extends HttpServlet {
         out.println("--------------------------------------------------\n");
 
         
-        MappingKey queryKey = new MappingKey(pathInfo, httpMethod);
+        UrlMethod queryKey = new UrlMethod(pathInfo, httpMethod);
 
         
         if (this.methods.containsKey(queryKey)) {
@@ -81,8 +81,8 @@ public class FrontControllerServlet extends HttpServlet {
             if (this.methods.isEmpty()) {
                 out.println("(Aucune route n'a été configurée avec @UrlMapping)");
             } else {
-                for (HashMap.Entry<MappingKey, Mapping> entry : this.methods.entrySet()) {
-                    MappingKey availableKey = entry.getKey();
+                for (HashMap.Entry<UrlMethod, Mapping> entry : this.methods.entrySet()) {
+                    UrlMethod availableKey = entry.getKey();
                     Mapping mappingDisponible = entry.getValue();
                     
                     out.println(" -> [" + availableKey.getMethod() + "] URL : " + availableKey.getUrl());

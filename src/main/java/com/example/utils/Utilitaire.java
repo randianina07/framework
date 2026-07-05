@@ -75,8 +75,8 @@ public class Utilitaire{
      }
      return classes;
 }
-public static HashMap<MappingKey, Mapping> getmethodAnnotated(List<Class<?>> classes) {
-    HashMap<MappingKey, Mapping> methodMap = new HashMap<>();
+public static HashMap<UrlMethod, Mapping> getmethodAnnotated(List<Class<?>> classes) {
+    HashMap<UrlMethod, Mapping> methodMap = new HashMap<>();
 
     for (Class<?> cls : classes) {
         java.lang.reflect.Method[] methods = cls.getDeclaredMethods();
@@ -90,7 +90,7 @@ public static HashMap<MappingKey, Mapping> getmethodAnnotated(List<Class<?>> cla
                 String httpMethod = annotation.method(); // Récupère "GET" ou "POST"
                 
                 // 2. On instancie la clé composite (URL + VERBE)
-                MappingKey key = new MappingKey(url, httpMethod);
+                UrlMethod key = new UrlMethod(url, httpMethod);
                 
                 // 3. On instancie l'objet de stockage avec la classe et le nom de la méthode
                 Mapping mapping = new Mapping(cls.getName(), met.getName());
