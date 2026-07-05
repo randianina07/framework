@@ -25,15 +25,7 @@ public class FrontControllerServlet extends HttpServlet {
         super.init();
 
         String packageName = this.getInitParameter("packageTest");
-
-        // Sécurité si le paramètre web.xml n'est pas lu correctement
-        if (packageName == null || packageName.trim().isEmpty()) {
-            packageName = "controller";
-        }
-
         this.annotatedClasses = Utilitaire.getClassesAnnotated(packageName, AnnotationController.class);
-
-        // Cette méthode renvoie désormais une HashMap<MappingKey, Mapping>
         this.methods = Utilitaire.getmethodAnnotated(annotatedClasses);
     }
     
@@ -110,7 +102,7 @@ public class FrontControllerServlet extends HttpServlet {
                     out.println("[" + availableKey.getMethod() + "] URL : " + availableKey.getUrl());
                     out.println("    Class  : " + mappingDisponible.getNomClass());
                     out.println("    Method : " + mappingDisponible.getNomMethod());
-                    out.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+                    out.println("(-------------------------------------------------------------)");
                 }
             }
         }

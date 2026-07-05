@@ -84,23 +84,21 @@ public static HashMap<MappingKey, Mapping> getmethodAnnotated(List<Class<?>> cla
             
             if (met.isAnnotationPresent(UrlMapping.class)) {
                 UrlMapping annotation = met.getAnnotation(UrlMapping.class);
-                
-                // 1. On extrait les données de l'annotation
+             
                 String url = annotation.value();
-                String httpMethod = annotation.method(); // Récupère "GET" ou "POST"
+                String httpMethod = annotation.method(); 
                 
-                // 2. On instancie la clé composite (URL + VERBE)
                 MappingKey key = new MappingKey(url, httpMethod);
                 
-                // 3. On instancie l'objet de stockage avec la classe et le nom de la méthode
+             
                 Mapping mapping = new Mapping(cls.getName(), met.getName());
                 
-                // 4. On vérifie la présence du doublon sur la Map globale
+          
                 if (methodMap.containsKey(key)) {
-                    throw new IllegalArgumentException("L'URL '" + url + "' avec la méthode '" + httpMethod + "' est déjà associée à un autre contrôleur !");
+                    throw new IllegalArgumentException("L'URL '" + url + "' avec la méthode '" + httpMethod + "' est déjà associée à un autre contrôleur ");
                 }
                 
-                // 5. Tout est bon, on enregistre
+                
                 methodMap.put(key, mapping);
             }
         }
