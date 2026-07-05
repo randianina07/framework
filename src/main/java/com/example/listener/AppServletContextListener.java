@@ -49,6 +49,6 @@ public class AppServletContextListener implements ServletContextListener {
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-        System.out.println("[SHUTDOWN] L'application s'arrête.");
+        System.out.println("[SHUTDOWN] L'application s'arrête. ");
     }
 }
