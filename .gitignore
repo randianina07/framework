@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+target/classes/com/example/App.class
+target/classes/com/example/App.class
+target/classes/com/example/servlet/FrontControllerServlet.class
+target/classes/com/example/utils/Mapping.class
+target/classes/com/example/utils/MappingKey.class
+target/classes/com/example/utils/Utilitaire.class
+target/test-classes/com/example/AppTest.class
