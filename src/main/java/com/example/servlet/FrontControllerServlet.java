@@ -78,7 +78,7 @@ public class FrontControllerServlet extends HttpServlet {
                 Method targetMethod = controllerClass.getDeclaredMethod(mapping.getNomMethod());
                 Object result = targetMethod.invoke(controllerInstance);
                 
-                // 3. Traiter le retour de la méthode
+                // 3. Traiter le retour de la méthode test, test
                 if (result instanceof ModelAndView) {
                     ModelAndView mv = (ModelAndView) result;
                     
