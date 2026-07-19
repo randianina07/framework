@@ -25,5 +25,7 @@ public class ModelAndView {
     public void setData(Map<String, Object> data) {
         this.data = data;
     }
-    
+    public void addObject(String key, Object value) { // Utilise bien Object ici
+    this.data.put(key, value);
+}
 }

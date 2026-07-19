@@ -7,27 +7,70 @@
   <version>current</version>
   <name>framework</name>
   <url>http://maven.apache.org</url>
+
   <properties>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- On centralise la version de Spring (6.x est requise pour Java 17+ et Jakarta EE) -->
+    <spring.version>6.1.6</spring.version>
   </properties>
- <dependencies>
+
+  <dependencies>
+    <!-- Dépendances existantes -->
     <dependency>
       <groupId>jakarta.servlet</groupId>
       <artifactId>jakarta.servlet-api</artifactId>
       <version>6.0.0</version>
-      <scope>provided</scope> </dependency>
-<dependency>
-			<groupId>io.github.classgraph</groupId>
-			<artifactId>classgraph</artifactId>
-			<version>4.8.174</version>
-		</dependency>
+      <scope>provided</scope> 
+    </dependency>
+    <dependency>
+      <groupId>io.github.classgraph</groupId>
+      <artifactId>classgraph</artifactId>
+      <version>4.8.174</version>
+    </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>3.8.1</version>
       <scope>test</scope>
     </dependency>
+
+    <!-- ========================================== -->
+    <!-- NOUVELLES DÉPENDANCES SPRING               -->
+    <!-- ========================================== -->
+
+    <!-- Spring Context : Le coeur de Spring (IoC Container) -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+      <version>${spring.version}</version>
+    </dependency>
+
+    <!-- Spring Web : Requis pour ContextLoaderListener et WebApplicationContext -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-web</artifactId>
+      <version>${spring.version}</version>
+    </dependency>
+
+    <!-- Spring JDBC : Pour la gestion basique de la base de données et les DataSource -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-jdbc</artifactId>
+      <version>${spring.version}</version>
+    </dependency>
+
+    <!-- Spring ORM : Si tu comptes utiliser Hibernate/JPA plus tard -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-orm</artifactId>
+      <version>${spring.version}</version>
+    </dependency>
+ <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>8.3.0</version>
+        </dependency>
   </dependencies>
 </project>

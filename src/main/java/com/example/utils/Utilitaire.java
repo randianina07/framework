@@ -75,8 +75,8 @@ public class Utilitaire{
      }
      return classes;
 }
-public static HashMap<MappingKey, Mapping> getmethodAnnotated(List<Class<?>> classes) {
-    HashMap<MappingKey, Mapping> methodMap = new HashMap<>();
+public static HashMap<UrlMethod, Mapping> getmethodAnnotated(List<Class<?>> classes) {
+    HashMap<UrlMethod, Mapping> methodMap = new HashMap<>();
 
     for (Class<?> cls : classes) {
         java.lang.reflect.Method[] methods = cls.getDeclaredMethods();
@@ -84,20 +84,18 @@ public static HashMap<MappingKey, Mapping> getmethodAnnotated(List<Class<?>> cla
             
             if (met.isAnnotationPresent(UrlMapping.class)) {
                 UrlMapping annotation = met.getAnnotation(UrlMapping.class);
-             
+                
                 String url = annotation.value();
                 String httpMethod = annotation.method(); 
+
+                UrlMethod key = new UrlMethod(url, httpMethod);
                 
-                MappingKey key = new MappingKey(url, httpMethod);
-                
-             
+               
                 Mapping mapping = new Mapping(cls.getName(), met.getName());
                 
-          
                 if (methodMap.containsKey(key)) {
-                    throw new IllegalArgumentException("L'URL '" + url + "' avec la méthode '" + httpMethod + "' est déjà associée à un autre contrôleur ");
+                    throw new IllegalArgumentException("L'URL '" + url + "' avec la méthode '" + httpMethod + "' est déjà associée à un autre contrôleur !");
                 }
-                
                 
                 methodMap.put(key, mapping);
             }
