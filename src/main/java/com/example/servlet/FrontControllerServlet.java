@@ -10,11 +10,13 @@ import java.util.Map;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 
-import com.example.annotation.AnnotationController;
+import com.example.annotation.AnnotationAPI;
+import com.example.annotation.AnnotationController; 
 import com.example.utils.Mapping;
 import com.example.utils.ModelAndView;
 import com.example.utils.UrlMethod;
-import com.example.utils.Utilitaire; // Importation de ta nouvelle classe
+import com.example.utils.Utilitaire;
+import com.google.gson.Gson;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -25,15 +27,16 @@ public class FrontControllerServlet extends HttpServlet {
     private List<Class<?>> annotatedClasses;
     private HashMap<UrlMethod, Mapping> methods;
     private WebApplicationContext springContext;
+    private final Gson gson = new Gson();
 
     @Override
     public void init() throws ServletException {
         super.init();
 
-        // Récupérer le conteneur Spring lié au ServletContext de Tomcat
+       
         this.springContext = WebApplicationContextUtils.getRequiredWebApplicationContext(getServletContext());
         System.out.println("Conteneur Spring initialisé avec succès !");
-        
+
         Object routesAttribute = this.getServletContext().getAttribute("routesWithMethod");
         if (routesAttribute instanceof HashMap) {
             this.methods = (HashMap<UrlMethod, Mapping>) routesAttribute;
@@ -44,16 +47,16 @@ public class FrontControllerServlet extends HttpServlet {
             this.methods = Utilitaire.getmethodAnnotated(annotatedClasses);
         }
     }
-    
+
     @Override
     public void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         processRequest(req, resp);
-    } 
+    }
 
     @Override
     public void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         processRequest(req, resp);
-    } 
+    }
 
     private void processRequest(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String requestURI = req.getRequestURI();
@@ -62,26 +65,47 @@ public class FrontControllerServlet extends HttpServlet {
         String httpMethod = req.getMethod();
 
         UrlMethod queryKey = new UrlMethod(pathInfo, httpMethod);
-        
+
         if (this.methods != null && this.methods.containsKey(queryKey)) {
             Mapping mapping = this.methods.get(queryKey);
-            
+
             try {
-                // 1. Charger la classe du contrôleur dynamiquement
+                
                 Class<?> controllerClass = Class.forName(mapping.getNomClass());
                 Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
-                
-                // [Nouveau] Lier notre contrôleur "maison" aux beans gérés par Spring
+
+               
                 this.springContext.getAutowireCapableBeanFactory().autowireBean(controllerInstance);
+
                 
-                // 2. Trouver et invoquer la méthode correspondante
                 Method targetMethod = controllerClass.getDeclaredMethod(mapping.getNomMethod());
                 Object result = targetMethod.invoke(controllerInstance);
+
+              
+                boolean api = targetMethod.isAnnotationPresent(AnnotationAPI.class);
+
+                if (api) {
+                   
+                    resp.setContentType("application/json;charset=UTF-8");
+                    PrintWriter out = resp.getWriter();
+
+                    if (result == null) {
+                        out.print("null");
+                    } else if (result instanceof String) {
                 
-                // 3. Traiter le retour de la méthode test, test
-                if (result instanceof ModelAndView) {
+                        out.print((String) result);
+                    } else {
+
+                        String jsonOutput = gson.toJson(result);
+                         System.out.println("JSON Généré : " + jsonOutput); 
+                         out.print(jsonOutput);
+                    }
+                    out.flush();
+
+                } else if (result instanceof ModelAndView) {
+                   
                     ModelAndView mv = (ModelAndView) result;
-                    
+
                     // Extraire et injecter les données du modèle dans la requête HTTP
                     Map<String, Object> data = mv.getData();
                     if (data != null) {
@@ -89,39 +113,40 @@ public class FrontControllerServlet extends HttpServlet {
                             req.setAttribute(entry.getKey(), entry.getValue());
                         }
                     }
-                    
+
                     // Récupérer le préfixe et le suffixe configurés dans le web.xml
                     String prefix = this.getServletContext().getInitParameter("view.prefix");
                     String suffix = this.getServletContext().getInitParameter("view.suffix");
-                    
-                    // Sécurité par défaut si rien n'est configuré dans web.xml
-                    if (prefix == null) prefix = "/WEB-INF/views/";
-                    if (suffix == null) suffix = ".jsp";
-                    
-                    // Reconstitution du chemin d'accès vers le fichier JSP
+
+                    // Sécurité par défaut
+                    if (prefix == null)
+                        prefix = "/WEB-INF/views/";
+                    if (suffix == null)
+                        suffix = ".jsp";
+
+                    // Reconstitution du chemin et Forward vers la page JSP
                     String viewPath = prefix + mv.getView() + suffix;
-                    
-                    // Forward de la requête vers la page JSP
                     req.getRequestDispatcher(viewPath).forward(req, resp);
-                    
+
                 } else if (result instanceof String) {
-                    // Si la méthode renvoie une chaîne brute, on l'affiche directement
+
                     resp.setContentType("text/plain;charset=UTF-8");
-                    resp.getWriter().println(result);
+                    resp.getWriter().println((String) result);
+
                 } else if (result != null) {
-                    // Pour tout autre type d'objet, on affiche sa représentation String
+                    
                     resp.setContentType("text/plain;charset=UTF-8");
                     resp.getWriter().println(result.toString());
                 }
-                
+
             } catch (Exception e) {
                 resp.setContentType("text/plain;charset=UTF-8");
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 PrintWriter out = resp.getWriter();
-                out.println("[ERREUR SPRINT 5] Erreur lors de l'exécution du contrôleur : " + mapping.getNomClass());
+                out.println("[ERREUR SPRINT 6] Erreur lors de l'exécution du contrôleur : " + mapping.getNomClass());
                 e.printStackTrace(out);
             }
-            
+
         } else {
             // Affichage de secours en cas de route introuvable
             resp.setContentType("text/plain;charset=UTF-8");
@@ -129,14 +154,14 @@ public class FrontControllerServlet extends HttpServlet {
             PrintWriter out = resp.getWriter();
             out.println(" Route introuvable pour [" + httpMethod + "] " + pathInfo);
             out.println("Voici la liste de toutes les routes disponibles avec leurs méthodes :\n");
-            
+
             if (this.methods == null || this.methods.isEmpty()) {
                 out.println("(Aucune route n'a été configurée avec @UrlMapping)");
             } else {
                 for (HashMap.Entry<UrlMethod, Mapping> entry : this.methods.entrySet()) {
                     UrlMethod availableKey = entry.getKey();
                     Mapping mappingDisponible = entry.getValue();
-                    
+
                     out.println(" -> [" + availableKey.getMethod() + "] URL : " + availableKey.getUrl());
                     out.println("    Class  : " + mappingDisponible.getNomClass());
                     out.println("    Method : " + mappingDisponible.getNomMethod());
