@@ -11,7 +11,7 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 
 import com.example.annotation.AnnotationAPI;
-import com.example.annotation.AnnotationController; 
+import com.example.annotation.AnnotationController;
 import com.example.utils.Mapping;
 import com.example.utils.ModelAndView;
 import com.example.utils.UrlMethod;
@@ -33,7 +33,6 @@ public class FrontControllerServlet extends HttpServlet {
     public void init() throws ServletException {
         super.init();
 
-       
         this.springContext = WebApplicationContextUtils.getRequiredWebApplicationContext(getServletContext());
         System.out.println("Conteneur Spring initialisé avec succès !");
 
@@ -70,40 +69,51 @@ public class FrontControllerServlet extends HttpServlet {
             Mapping mapping = this.methods.get(queryKey);
 
             try {
-                
+
                 Class<?> controllerClass = Class.forName(mapping.getNomClass());
                 Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
 
-               
                 this.springContext.getAutowireCapableBeanFactory().autowireBean(controllerInstance);
 
-                
                 Method targetMethod = controllerClass.getDeclaredMethod(mapping.getNomMethod());
                 Object result = targetMethod.invoke(controllerInstance);
 
-              
                 boolean api = targetMethod.isAnnotationPresent(AnnotationAPI.class);
 
+                // Récupérer la Map de tous les paramètres HTTP
+                Map<String, String[]> parameterMap = req.getParameterMap();
+
+                System.out.println("--- PARAMÈTRES REÇUS DANS LA REQUÊTE ---");
+                for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
+                    String paramName = entry.getKey();
+                    String[] paramValues = entry.getValue();
+
+                    // Jointure si plusieurs valeurs sont passées pour une même clé , accidentally sent it on main 
+                    String displayValue = String.join(", ", paramValues);
+                    System.out.println(paramName + " = " + displayValue);
+                }
+                System.out.println("-----------------------------------------");
+
                 if (api) {
-                   
+
                     resp.setContentType("application/json;charset=UTF-8");
                     PrintWriter out = resp.getWriter();
 
                     if (result == null) {
                         out.print("null");
                     } else if (result instanceof String) {
-                
+
                         out.print((String) result);
                     } else {
 
                         String jsonOutput = gson.toJson(result);
-                         System.out.println("JSON Généré : " + jsonOutput); 
-                         out.print(jsonOutput);
+                        System.out.println("JSON Généré : " + jsonOutput);
+                        out.print(jsonOutput);
                     }
                     out.flush();
 
                 } else if (result instanceof ModelAndView) {
-                   
+
                     ModelAndView mv = (ModelAndView) result;
 
                     // Extraire et injecter les données du modèle dans la requête HTTP
@@ -134,7 +144,7 @@ public class FrontControllerServlet extends HttpServlet {
                     resp.getWriter().println((String) result);
 
                 } else if (result != null) {
-                    
+
                     resp.setContentType("text/plain;charset=UTF-8");
                     resp.getWriter().println(result.toString());
                 }
