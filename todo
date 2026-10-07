@@ -1,0 +1,16 @@
+## Sprint 6
+- [ok] corrige lien dans base (use repository dans test)
+- [ok] ajouter annotation AnnotationAPI qui fait que all method de controller return json 
+- [ok] vérifier si il y a annotation dans le test et afficher json avec printWriter 
+- [ok] si string on affiche sinon on fait to json
+
+## Sprint 7
+- binding 
+- vue -> controller
+- verifier method si il y a parametre ou non (renvoyer null par défaut)
+
+
+## Sprint 7bis 
+- argument 1 (objet, et autres) : instance objet pris en charge par method 
+
+A faire dans le futur : Rest Api, Upload fichier , gestion session, authorization 
