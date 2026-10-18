@@ -30,10 +30,12 @@ public class Utilitaire {
     }
 
     private static void prendreClasses(java.io.File directory, String currentPackage, List<Class<?>> classes) {
-        if (!directory.exists()) return;
+        if (!directory.exists())
+            return;
 
         java.io.File[] files = directory.listFiles();
-        if (files == null) return;
+        if (files == null)
+            return;
 
         for (java.io.File file : files) {
             if (file.isDirectory()) {
@@ -52,7 +54,8 @@ public class Utilitaire {
         }
     }
 
-    public static List<Class<?>> getClassesAnnotated(String packageName, Class<? extends java.lang.annotation.Annotation> annotClass) {
+    public static List<Class<?>> getClassesAnnotated(String packageName,
+            Class<? extends java.lang.annotation.Annotation> annotClass) {
         List<Class<?>> classes = new ArrayList<>();
         List<Class<?>> allclasses = scanClassesInPackage(packageName);
 
@@ -79,7 +82,8 @@ public class Utilitaire {
                     Mapping mapping = new Mapping(cls.getName(), met.getName());
 
                     if (methodMap.containsKey(key)) {
-                        throw new IllegalArgumentException("L'URL '" + url + "' avec la méthode '" + httpMethod + "' est déjà associée à un autre contrôleur !");
+                        throw new IllegalArgumentException("L'URL '" + url + "' avec la méthode '" + httpMethod
+                                + "' est déjà associée à un autre contrôleur !");
                     }
 
                     methodMap.put(key, mapping);
@@ -96,10 +100,11 @@ public class Utilitaire {
                 return method;
             }
         }
-        throw new NoSuchMethodException("Méthode " + methodName + " introuvable dans la classe " + controllerClass.getName());
+        throw new NoSuchMethodException(
+                "Méthode " + methodName + " introuvable dans la classe " + controllerClass.getName());
     }
 
-   public static Object[] resolveMethodArguments(Method method, HttpServletRequest req) throws Exception {
+    public static Object[] resolveMethodArguments(Method method, HttpServletRequest req) throws Exception {
         Parameter[] parameters = method.getParameters();
 
         if (parameters.length == 0) {
@@ -114,7 +119,7 @@ public class Utilitaire {
 
             if (paramType.equals(HttpServletRequest.class)) {
                 args[i] = req;
-            } 
+            }
             // Argument direct de type List<T>
             else if (List.class.isAssignableFrom(paramType)) {
                 Type genericType = param.getParameterizedType();
@@ -123,8 +128,8 @@ public class Utilitaire {
                     itemClass = (Class<?>) ((ParameterizedType) genericType).getActualTypeArguments()[0];
                 }
                 args[i] = populateList("", itemClass, req);
-            } 
-            //  Argument direct de type simple / primitif
+            }
+            // Argument direct de type simple / primitif
             else if (isBasicType(paramType)) {
                 String[] values = req.getParameterValues(param.getName());
                 if (values != null && values.length > 0 && !values[0].trim().isEmpty()) {
@@ -132,8 +137,10 @@ public class Utilitaire {
                 } else {
                     args[i] = getDefaultValue(paramType);
                 }
-            } 
-            //  Objet complexe (DTO / Entité)
+            } else if (paramType == Mapfile.class) {
+               args[i] = extractMapFile()
+            }
+            // Objet complexe (DTO / Entité)
             else {
                 args[i] = populateObject(paramType, "", req);
             }
@@ -144,8 +151,10 @@ public class Utilitaire {
 
     /**
      * Instanciation et remplissage récursif d'un objet
-     * @param clazz La classe de l'objet à instancier
-     * @param prefix Le préfixe de chemin (ex: "" pour la racine, "adresse." pour un sous-objet)
+     * 
+     * @param clazz  La classe de l'objet à instancier
+     * @param prefix Le préfixe de chemin (ex: "" pour la racine, "adresse." pour un
+     *               sous-objet)
      */
     public static Object populateObject(Class<?> clazz, String prefix, HttpServletRequest req) throws Exception {
         Object instance = clazz.getDeclaredConstructor().newInstance();
@@ -163,7 +172,7 @@ public class Utilitaire {
                 if (values != null && values.length > 0 && !values[0].trim().isEmpty()) {
                     field.set(instance, convertType(values[0], fieldType));
                 }
-            } 
+            }
             // 2. Attribut de type List<T> (Ex: List<Telephone>)
             else if (List.class.isAssignableFrom(fieldType)) {
                 Type genericType = field.getGenericType();
@@ -173,10 +182,11 @@ public class Utilitaire {
                 }
                 List<?> list = populateList(fullPath, itemClass, req);
                 field.set(instance, list);
-            } 
+            }
             // 3. Attribut de type Objet imbriqué (RÉCURSIVITÉ)
             else {
-                // On vérifie si la requête contient au moins un paramètre commençant par le chemin de l'objet
+                // On vérifie si la requête contient au moins un paramètre commençant par le
+                // chemin de l'objet
                 if (hasParametersStartingWith(req, fullPath + ".")) {
                     Object nestedObject = populateObject(fieldType, fullPath, req);
                     field.set(instance, nestedObject);
@@ -210,7 +220,7 @@ public class Utilitaire {
             int index = 0;
             while (true) {
                 String itemPrefix = prefix.isEmpty() ? "[" + index + "]" : prefix + "[" + index + "]";
-                
+
                 // Si aucun paramètre ne commence par "telephones[index].", on arrête la boucle
                 if (!hasParametersStartingWith(req, itemPrefix + ".")) {
                     break;
@@ -237,28 +247,36 @@ public class Utilitaire {
 
     private static boolean isBasicType(Class<?> type) {
         return type.isPrimitive() ||
-               type == String.class ||
-               type == Integer.class ||
-               type == Long.class ||
-               type == Double.class ||
-               type == Float.class ||
-               type == Boolean.class;
+                type == String.class ||
+                type == Integer.class ||
+                type == Long.class ||
+                type == Double.class ||
+                type == Float.class ||
+                type == Boolean.class;
     }
 
     private static Object convertType(String value, Class<?> targetType) {
-        if (targetType == String.class) return value;
-        if (targetType == Integer.class || targetType == int.class) return Integer.parseInt(value);
-        if (targetType == Long.class || targetType == long.class) return Long.parseLong(value);
-        if (targetType == Double.class || targetType == double.class) return Double.parseDouble(value);
-        if (targetType == Float.class || targetType == float.class) return Float.parseFloat(value);
-        if (targetType == Boolean.class || targetType == boolean.class) return Boolean.parseBoolean(value);
+        if (targetType == String.class)
+            return value;
+        if (targetType == Integer.class || targetType == int.class)
+            return Integer.parseInt(value);
+        if (targetType == Long.class || targetType == long.class)
+            return Long.parseLong(value);
+        if (targetType == Double.class || targetType == double.class)
+            return Double.parseDouble(value);
+        if (targetType == Float.class || targetType == float.class)
+            return Float.parseFloat(value);
+        if (targetType == Boolean.class || targetType == boolean.class)
+            return Boolean.parseBoolean(value);
         return value;
     }
 
     private static Object getDefaultValue(Class<?> type) {
         if (type.isPrimitive()) {
-            if (type == boolean.class) return false;
-            if (type == int.class || type == long.class || type == double.class || type == float.class) return 0;
+            if (type == boolean.class)
+                return false;
+            if (type == int.class || type == long.class || type == double.class || type == float.class)
+                return 0;
         }
         return null;
     }

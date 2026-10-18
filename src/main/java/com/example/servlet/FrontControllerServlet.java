@@ -19,10 +19,17 @@ import com.example.utils.Utilitaire;
 import com.google.gson.Gson;
 
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig; // <-- Indispensable pour l'upload
+import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+@MultipartConfig(
+    fileSizeThreshold = 1024 * 1024 * 2,  // 2MB (stocké en mémoire avant d'être écrit sur disque si trop gros)
+    maxFileSize = 1024 * 1024 * 10,       // 10MB (taille maximale autorisée par fichier)
+    maxRequestSize = 1024 * 1024 * 50     // 50MB (taille maximale totale de la requête multipart)
+)
 public class FrontControllerServlet extends HttpServlet {
     private List<Class<?>> annotatedClasses;
     private HashMap<UrlMethod, Mapping> methods;
@@ -77,7 +84,7 @@ public class FrontControllerServlet extends HttpServlet {
                 // 1. Recherche de la méthode ciblée
                 Method targetMethod = Utilitaire.findTargetMethod(controllerClass, mapping.getNomMethod());
 
-                // 2. Résolution dynamique des arguments
+                // 2. Résolution dynamique des arguments (gère maintenant les Mapfile)
                 Object[] methodArgs = Utilitaire.resolveMethodArguments(targetMethod, req);
 
                 // 3. Exécution de la méthode avec ses arguments
