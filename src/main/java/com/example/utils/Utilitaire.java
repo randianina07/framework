@@ -1,5 +1,6 @@
 package com.example.utils;
 
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -11,8 +12,11 @@ import java.util.List;
 import java.util.Map;
 
 import com.example.annotation.UrlMapping;
+// Importe ta classe MapFile (adapte le package si elle est dans com.example.model)
+import com.example.utils.MapFile; 
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
 
 public class Utilitaire {
 
@@ -123,7 +127,7 @@ public class Utilitaire {
             // Argument direct de type List<T>
             else if (List.class.isAssignableFrom(paramType)) {
                 Type genericType = param.getParameterizedType();
-                Class<?> itemClass = String.class; // Défaut si type brut
+                Class<?> itemClass = String.class;
                 if (genericType instanceof ParameterizedType) {
                     itemClass = (Class<?>) ((ParameterizedType) genericType).getActualTypeArguments()[0];
                 }
@@ -137,8 +141,10 @@ public class Utilitaire {
                 } else {
                     args[i] = getDefaultValue(paramType);
                 }
-            } else if (paramType == Mapfile.class) {
-               args[i] = extractMapFile()
+            } 
+            // Argument direct de type MapFile
+            else if (paramType == MapFile.class) {
+                args[i] = extractMapfile(param.getName(), req);
             }
             // Objet complexe (DTO / Entité)
             else {
@@ -149,13 +155,6 @@ public class Utilitaire {
         return args;
     }
 
-    /**
-     * Instanciation et remplissage récursif d'un objet
-     * 
-     * @param clazz  La classe de l'objet à instancier
-     * @param prefix Le préfixe de chemin (ex: "" pour la racine, "adresse." pour un
-     *               sous-objet)
-     */
     public static Object populateObject(Class<?> clazz, String prefix, HttpServletRequest req) throws Exception {
         Object instance = clazz.getDeclaredConstructor().newInstance();
         Field[] fields = clazz.getDeclaredFields();
@@ -173,7 +172,7 @@ public class Utilitaire {
                     field.set(instance, convertType(values[0], fieldType));
                 }
             }
-            // 2. Attribut de type List<T> (Ex: List<Telephone>)
+            // 2. Attribut de type List<T>
             else if (List.class.isAssignableFrom(fieldType)) {
                 Type genericType = field.getGenericType();
                 Class<?> itemClass = String.class;
@@ -183,11 +182,16 @@ public class Utilitaire {
                 List<?> list = populateList(fullPath, itemClass, req);
                 field.set(instance, list);
             }
-            // 3. Attribut de type Objet imbriqué (RÉCURSIVITÉ)
+            // 3. Attribut de type MapFile (Sprint 8)
+            else if (fieldType == MapFile.class) {
+                MapFile mf = extractMapfile(fullPath, req);
+                if (mf != null && mf.getBytes() != null && mf.getBytes().length > 0) {
+                    field.set(instance, mf);
+                }
+            }
+            // 4. Attribut de type Objet imbriqué (RÉCURSIVITÉ)
             else {
-                // On vérifie si la requête contient au moins un paramètre commençant par le
-                // chemin de l'objet
-                if (hasParametersStartingWith(req, fullPath + ".")) {
+                if (hasParametersStartingWith(req, fullPath + ".") || hasPartStartingWith(req, fullPath + ".")) {
                     Object nestedObject = populateObject(fieldType, fullPath, req);
                     field.set(instance, nestedObject);
                 }
@@ -202,7 +206,6 @@ public class Utilitaire {
         List list = new ArrayList<>();
 
         if (isBasicType(itemClass)) {
-            // Liste de types simples (ex: tags=java&tags=spring ou tags[]=java)
             String paramName = prefix.isEmpty() ? "items" : prefix;
             String[] values = req.getParameterValues(paramName);
             if (values == null && !prefix.isEmpty()) {
@@ -216,13 +219,11 @@ public class Utilitaire {
                 }
             }
         } else {
-            // Liste d'objets complexes (ex: telephones[0].numero, telephones[1].numero)
             int index = 0;
             while (true) {
                 String itemPrefix = prefix.isEmpty() ? "[" + index + "]" : prefix + "[" + index + "]";
 
-                // Si aucun paramètre ne commence par "telephones[index].", on arrête la boucle
-                if (!hasParametersStartingWith(req, itemPrefix + ".")) {
+                if (!hasParametersStartingWith(req, itemPrefix + ".") && !hasPartStartingWith(req, itemPrefix + ".")) {
                     break;
                 }
 
@@ -235,12 +236,81 @@ public class Utilitaire {
         return list;
     }
 
+    private static MapFile extractMapfile(String fieldName, HttpServletRequest req) {
+        try {
+            String contentType = req.getContentType();
+            if (contentType == null || !contentType.toLowerCase().startsWith("multipart/")) {
+                return null;
+            }
+
+            Part part = req.getPart(fieldName);
+            if (part == null || part.getSize() == 0) {
+                return null;
+            }
+
+            String submittedFileName = extractFileName(part);
+            if (submittedFileName == null || submittedFileName.isEmpty()) {
+                return null;
+            }
+
+            String extension = "";
+            int i = submittedFileName.lastIndexOf('.');
+            if (i > 0) {
+                extension = submittedFileName.substring(i + 1);
+            }
+
+            // Lecture directe des bytes au format primitif
+            byte[] bytes;
+            try (InputStream is = part.getInputStream()) {
+                bytes = is.readAllBytes();
+            }
+
+            // Utilisation de la classe MapFile
+            MapFile mapFile = new MapFile();
+            mapFile.setNom(submittedFileName);
+            mapFile.setExtension(extension);
+            mapFile.setBytes(bytes);
+
+            return mapFile;
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    private static String extractFileName(Part part) {
+        String contentDisp = part.getHeader("content-disposition");
+        for (String cd : contentDisp.split(";")) {
+            if (cd.trim().startsWith("filename")) {
+                return cd.substring(cd.indexOf('=') + 1).trim().replace("\"", "");
+            }
+        }
+        return null;
+    }
+
     private static boolean hasParametersStartingWith(HttpServletRequest req, String prefix) {
         Map<String, String[]> parameterMap = req.getParameterMap();
         for (String paramName : parameterMap.keySet()) {
             if (paramName.startsWith(prefix)) {
                 return true;
             }
+        }
+        return false;
+    }
+
+    private static boolean hasPartStartingWith(HttpServletRequest req, String prefix) {
+        try {
+            String contentType = req.getContentType();
+            if (contentType == null || !contentType.toLowerCase().startsWith("multipart/")) {
+                return false;
+            }
+            for (Part part : req.getParts()) {
+                if (part.getName().startsWith(prefix)) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            // Ignorer si non multipart
         }
         return false;
     }
