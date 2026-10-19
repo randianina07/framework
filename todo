@@ -19,6 +19,9 @@
 
 ## Sprint 9
 - session user dispo dans controller du dev 
-
+- rendre controller en singleton (pas à faire pour le moment )
+- creer classe session avec Map<String,Object> comme attribut et ajouter method utilitaires 
+- appeler classe dans method action
+- ajouter bloc dans condition framework , créer instance à partir de HttpSession puis boucler , mettre à jour httpsession 
 
 - A faire dans le futur : Rest Api, Upload fichier , gestion session, authorization 
