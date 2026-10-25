@@ -14,24 +14,24 @@ import com.example.annotation.AnnotationAPI;
 import com.example.annotation.AnnotationController;
 import com.example.utils.Mapping;
 import com.example.utils.ModelAndView;
+import com.example.utils.MySession; // Utilisation de MySession
 import com.example.utils.UrlMethod;
 import com.example.utils.Utilitaire;
 import com.google.gson.Gson;
 
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig; // <-- Indispensable pour l'upload
-import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
-@MultipartConfig(
-    fileSizeThreshold = 1024 * 1024 * 2,  // 2MB (stocké en mémoire avant d'être écrit sur disque si trop gros)
-    maxFileSize = 1024 * 1024 * 10,       // 10MB (taille maximale autorisée par fichier)
-    maxRequestSize = 1024 * 1024 * 50     // 50MB (taille maximale totale de la requête multipart)
+@MultipartConfig(fileSizeThreshold = 1024 * 1024 * 2, // 2MB
+        maxFileSize = 1024 * 1024 * 10,               // 10MB
+        maxRequestSize = 1024 * 1024 * 50             // 50MB
 )
 public class FrontControllerServlet extends HttpServlet {
-    private List<Class<?>> annotatedClasses;
+    private List<Class<?>> annotatedClasses; 
     private HashMap<UrlMethod, Mapping> methods;
     private WebApplicationContext springContext;
     private final Gson gson = new Gson();
@@ -47,7 +47,6 @@ public class FrontControllerServlet extends HttpServlet {
         if (routesAttribute instanceof HashMap) {
             this.methods = (HashMap<UrlMethod, Mapping>) routesAttribute;
         } else {
-            // Fallback historique si le ServletContextListener n'est pas activé
             String packageName = this.getInitParameter("packageTest");
             this.annotatedClasses = Utilitaire.getClassesAnnotated(packageName, AnnotationController.class);
             this.methods = Utilitaire.getmethodAnnotated(annotatedClasses);
@@ -84,14 +83,27 @@ public class FrontControllerServlet extends HttpServlet {
                 // 1. Recherche de la méthode ciblée
                 Method targetMethod = Utilitaire.findTargetMethod(controllerClass, mapping.getNomMethod());
 
-                // 2. Résolution dynamique des arguments (gère maintenant les Mapfile)
+                // 2. Résolution dynamique des arguments (injecte MySession depuis le ServletContext)
                 Object[] methodArgs = Utilitaire.resolveMethodArguments(targetMethod, req);
 
                 // 3. Exécution de la méthode avec ses arguments
                 Object result = targetMethod.invoke(controllerInstance, methodArgs);
 
-                boolean api = targetMethod.isAnnotationPresent(AnnotationAPI.class);
+                // 4. Synchronisation de la session via le ServletContext (Sprint 9)
+                HttpSession httpSession = req.getSession(false);
+                if (httpSession != null) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, MySession> activeSessions = (Map<String, MySession>) getServletContext().getAttribute("activeSessions");
+                    if (activeSessions != null) {
+                        MySession session = activeSessions.get(httpSession.getId());
+                        if (session != null) {
+                            session.synchronize(); // Sauvegarde les modifications dans Tomcat
+                        }
+                    }
+                }
 
+                boolean api = targetMethod.isAnnotationPresent(AnnotationAPI.class);
+                
                 // Debug : Affichage des paramètres reçus
                 Map<String, String[]> parameterMap = req.getParameterMap();
                 System.out.println("--- PARAMÈTRES REÇUS DANS LA REQUÊTE ---");
@@ -121,7 +133,6 @@ public class FrontControllerServlet extends HttpServlet {
                 } else if (result instanceof ModelAndView) {
                     ModelAndView mv = (ModelAndView) result;
 
-                    // Extraire et injecter les données du modèle dans la requête HTTP
                     Map<String, Object> data = mv.getData();
                     if (data != null) {
                         for (Map.Entry<String, Object> entry : data.entrySet()) {
@@ -129,17 +140,14 @@ public class FrontControllerServlet extends HttpServlet {
                         }
                     }
 
-                    // Récupérer le préfixe et le suffixe configurés dans le web.xml
                     String prefix = this.getServletContext().getInitParameter("view.prefix");
                     String suffix = this.getServletContext().getInitParameter("view.suffix");
 
-                    // Sécurité par défaut
                     if (prefix == null)
                         prefix = "/WEB-INF/views/";
                     if (suffix == null)
                         suffix = ".jsp";
 
-                    // Reconstitution du chemin et Forward vers la page JSP
                     String viewPath = prefix + mv.getView() + suffix;
                     req.getRequestDispatcher(viewPath).forward(req, resp);
 
@@ -161,7 +169,6 @@ public class FrontControllerServlet extends HttpServlet {
             }
 
         } else {
-            // Affichage de secours en cas de route introuvable
             resp.setContentType("text/plain;charset=UTF-8");
             resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
             PrintWriter out = resp.getWriter();
