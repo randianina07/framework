@@ -10,12 +10,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.example.annotation.UrlMapping;
-// Importe ta classe MapFile (adapte le package si elle est dans com.example.model)
-import com.example.utils.MapFile; 
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 
 public class Utilitaire {
@@ -123,31 +123,46 @@ public class Utilitaire {
 
             if (paramType.equals(HttpServletRequest.class)) {
                 args[i] = req;
-            }
-            // Argument direct de type List<T>
-            else if (List.class.isAssignableFrom(paramType)) {
+            } else if (List.class.isAssignableFrom(paramType)) {
                 Type genericType = param.getParameterizedType();
                 Class<?> itemClass = String.class;
                 if (genericType instanceof ParameterizedType) {
                     itemClass = (Class<?>) ((ParameterizedType) genericType).getActualTypeArguments()[0];
                 }
                 args[i] = populateList("", itemClass, req);
-            }
-            // Argument direct de type simple / primitif
-            else if (isBasicType(paramType)) {
+            } else if (isBasicType(paramType)) {
                 String[] values = req.getParameterValues(param.getName());
                 if (values != null && values.length > 0 && !values[0].trim().isEmpty()) {
                     args[i] = convertType(values[0], paramType);
                 } else {
                     args[i] = getDefaultValue(paramType);
                 }
-            } 
-            // Argument direct de type MapFile
-            else if (paramType == MapFile.class) {
+            } // Dans ta méthode resolveMethodArguments (ou équivalent)
+            else if (paramType == MySession.class) {
+                HttpSession httpSession = req.getSession();
+                String sessionId = httpSession.getId();
+
+                jakarta.servlet.ServletContext context = req.getServletContext();
+                @SuppressWarnings("unchecked")
+                Map<String, MySession> activeSessions = (Map<String, MySession>) context.getAttribute("activeSessions");
+
+                if (activeSessions == null) {
+                    activeSessions = new ConcurrentHashMap<>();
+                    context.setAttribute("activeSessions", activeSessions);
+                }
+
+                // Récupérer la session existante ou en créer une nouvelle pour cet utilisateur
+                MySession session = activeSessions.get(sessionId);
+                if (session == null) {
+                    session = new MySession(httpSession);
+                    activeSessions.put(sessionId, session);
+                }
+
+                args[i] = session;
+                // Plus besoin de req.setAttribute("injectedSession", session) ici !
+            } else if (paramType == MapFile.class) {
                 args[i] = extractMapfile(param.getName(), req);
-            }
-            // Objet complexe (DTO / Entité)
-            else {
+            } else {
                 args[i] = populateObject(paramType, "", req);
             }
         }
@@ -181,9 +196,7 @@ public class Utilitaire {
                 }
                 List<?> list = populateList(fullPath, itemClass, req);
                 field.set(instance, list);
-            }
-            // 3. Attribut de type MapFile (Sprint 8)
-            else if (fieldType == MapFile.class) {
+            } else if (fieldType == MapFile.class) {
                 MapFile mf = extractMapfile(fullPath, req);
                 if (mf != null && mf.getBytes() != null && mf.getBytes().length > 0) {
                     field.set(instance, mf);
@@ -277,7 +290,7 @@ public class Utilitaire {
             return null;
         }
     }
-    
+
     private static String extractFileName(Part part) {
         String contentDisp = part.getHeader("content-disposition");
         for (String cd : contentDisp.split(";")) {

@@ -5,10 +5,12 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.example.utils.LoadingClass;
 import com.example.utils.Mapping;
 import com.example.utils.UrlMethod;
+import com.example.utils.MySession;
 
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
@@ -23,6 +25,9 @@ public class AppServletContextListener implements ServletContextListener {
             String packageName;
             Map<UrlMethod, Mapping> toutesLesRoutes = new HashMap<>();
             Properties prop = new Properties();
+            Map<String,MySession> activeSessions = new ConcurrentHashMap<>();
+            sce.getServletContext().setAttribute("activeSessions", activeSessions);
+
             try (InputStream input = LoadingClass.class.getClassLoader().getResourceAsStream("config.properties")) {
                 if (input == null) {
                     throw new RuntimeException("[ERREUR] Impossible de trouver le fichier config.properties.");
@@ -40,6 +45,7 @@ public class AppServletContextListener implements ServletContextListener {
             sce.getServletContext().setAttribute("routesWithMethod", toutesLesRoutes);
 
             System.out.println("[SUCCESS] Scan terminé avec succès. " + toutesLesRoutes.size() + " routes chargées.");
+            System.out.println("[SUCCESS] Map des sessions actives initialisée dans le ServletContext.");
 
         } catch (IllegalStateException e) {
             System.err.println("[ERREUR CRITIQUE DÉMARRAGE] " + e.getMessage());
