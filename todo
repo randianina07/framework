@@ -23,5 +23,13 @@
 - creer classe session avec Map<String,Object> comme attribut et ajouter method utilitaires 
 - appeler classe dans method action
 - ajouter bloc dans condition framework , créer instance à partir de HttpSession puis boucler , mettre à jour httpsession 
+- mettre session dans context (servletcontext peut être appelé n'importe où)
+
+## Sprint 10
+- method d'action , obligé authentifié vo appellable 
+- ajouter roles dans method 
+- creer annotation Auth 
+- voir dans controller si annotation existe , voir session et dire à framework le nom de la variable dans la session et utiliser initparam
+
 
 - A faire dans le futur : Rest Api, Upload fichier , gestion session, authorization 
