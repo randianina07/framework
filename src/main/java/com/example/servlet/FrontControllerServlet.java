@@ -12,9 +12,10 @@ import org.springframework.web.context.support.WebApplicationContextUtils;
 
 import com.example.annotation.AnnotationAPI;
 import com.example.annotation.AnnotationController;
+import com.example.annotation.Auth;
 import com.example.utils.Mapping;
 import com.example.utils.ModelAndView;
-import com.example.utils.MySession; // Utilisation de MySession
+import com.example.utils.MySession;
 import com.example.utils.UrlMethod;
 import com.example.utils.Utilitaire;
 import com.google.gson.Gson;
@@ -27,14 +28,15 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 @MultipartConfig(fileSizeThreshold = 1024 * 1024 * 2, // 2MB
-        maxFileSize = 1024 * 1024 * 10,               // 10MB
-        maxRequestSize = 1024 * 1024 * 50             // 50MB
+        maxFileSize = 1024 * 1024 * 10, // 10MB
+        maxRequestSize = 1024 * 1024 * 50 // 50MB
 )
 public class FrontControllerServlet extends HttpServlet {
-    private List<Class<?>> annotatedClasses; 
+    private List<Class<?>> annotatedClasses;
     private HashMap<UrlMethod, Mapping> methods;
     private WebApplicationContext springContext;
     private final Gson gson = new Gson();
+
 
     @Override
     public void init() throws ServletException {
@@ -80,16 +82,67 @@ public class FrontControllerServlet extends HttpServlet {
 
                 this.springContext.getAutowireCapableBeanFactory().autowireBean(controllerInstance);
 
-                // 1. Recherche de la méthode ciblée
                 Method targetMethod = Utilitaire.findTargetMethod(controllerClass, mapping.getNomMethod());
 
-                // 2. Résolution dynamique des arguments (injecte MySession depuis le ServletContext)
+            
+                if (targetMethod.isAnnotationPresent(Auth.class)) {
+                    HttpSession httpSession = req.getSession(false);
+                    boolean isAuthenticated = false;
+                    Object connectedUser = null;
+
+                    
+                    String authSessionKey = (String) getServletContext().getAttribute("authSessionKey");
+
+                    if (httpSession != null) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, MySession> activeSessions = (Map<String, MySession>) getServletContext().getAttribute("activeSessions");
+                        if (activeSessions != null) {
+                            MySession session = activeSessions.get(httpSession.getId());
+                            if (session != null) {
+                                connectedUser = session.getAttribute(authSessionKey);
+                                if (connectedUser != null) {
+                                    isAuthenticated = true;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!isAuthenticated) {
+                        throw new RuntimeException("Accès refusé : Vous devez être connecté.");
+                    }
+
+                   
+                    Auth authAnnotation = targetMethod.getAnnotation(Auth.class);
+                    String[] requiredRoles = authAnnotation.roles();
+
+                    if (requiredRoles.length > 0) {
+                        String userRole = "";
+                        try {
+                            Method getRoleMethod = connectedUser.getClass().getMethod("getRole");
+                            userRole = (String) getRoleMethod.invoke(connectedUser);
+                        } catch (Exception e) {
+                            throw new RuntimeException("Erreur framework : L'objet utilisateur en session doit posséder une méthode getRole().");
+                        }
+
+                        boolean hasRole = false;
+                        for (String role : requiredRoles) {
+                            if (role.equalsIgnoreCase(userRole)) {
+                                hasRole = true;
+                                break;
+                            }
+                        }
+
+                        if (!hasRole) {
+                            throw new RuntimeException("Accès interdit : Votre rôle (" + userRole + ") ne vous permet pas d'accéder à cette ressource.");
+                        }
+                    }
+                }
+
+                
                 Object[] methodArgs = Utilitaire.resolveMethodArguments(targetMethod, req);
 
-                // 3. Exécution de la méthode avec ses arguments
                 Object result = targetMethod.invoke(controllerInstance, methodArgs);
 
-                // 4. Synchronisation de la session via le ServletContext (Sprint 9)
                 HttpSession httpSession = req.getSession(false);
                 if (httpSession != null) {
                     @SuppressWarnings("unchecked")
@@ -97,14 +150,13 @@ public class FrontControllerServlet extends HttpServlet {
                     if (activeSessions != null) {
                         MySession session = activeSessions.get(httpSession.getId());
                         if (session != null) {
-                            session.synchronize(); // Sauvegarde les modifications dans Tomcat
+                            session.synchronize();
                         }
                     }
                 }
 
                 boolean api = targetMethod.isAnnotationPresent(AnnotationAPI.class);
-                
-                // Debug : Affichage des paramètres reçus
+
                 Map<String, String[]> parameterMap = req.getParameterMap();
                 System.out.println("--- PARAMÈTRES REÇUS DANS LA REQUÊTE ---");
                 for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {

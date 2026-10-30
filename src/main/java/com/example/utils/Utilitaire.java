@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.example.annotation.UrlMapping;
 
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
@@ -142,7 +143,7 @@ public class Utilitaire {
                 HttpSession httpSession = req.getSession();
                 String sessionId = httpSession.getId();
 
-                jakarta.servlet.ServletContext context = req.getServletContext();
+                ServletContext context = req.getServletContext();
                 @SuppressWarnings("unchecked")
                 Map<String, MySession> activeSessions = (Map<String, MySession>) context.getAttribute("activeSessions");
 

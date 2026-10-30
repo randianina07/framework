@@ -30,6 +30,8 @@
 - ajouter roles dans method 
 - creer annotation Auth 
 - voir dans controller si annotation existe , voir session et dire à framework le nom de la variable dans la session et utiliser initparam
+- user doit être  authentifié + role dans method action pour que ça marche
+- je pense mettre les roles dans la classe Auth mais je sais pas si je devrais créer un autre classe Role
 
 
 - A faire dans le futur : Rest Api, Upload fichier , gestion session, authorization 
