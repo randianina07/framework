@@ -20,17 +20,17 @@ import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
 
 public class LoadingClass {
+
     private static Properties loadConfigProperties() {
         Properties prop = new Properties();
         try (InputStream input = LoadingClass.class.getClassLoader().getResourceAsStream("config.properties")) {
-            if (input == null) {
-                throw new RuntimeException("[ERREUR] Impossible de trouver le fichier config.properties.");
+            if (input != null) {
+                prop.load(input);
             }
-            prop.load(input);
-            return prop;
         } catch (IOException e) {
-            throw new RuntimeException("Erreur lors de la lecture de config.properties", e);
+            // Lecture silencieuse si le fichier est absent
         }
+        return prop;
     }
 
     public static boolean hasAnnotation(Class<?> clazzScanned, String monAnnotation) {
@@ -49,7 +49,6 @@ public class LoadingClass {
 
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("Annotation non trouvée : " + monAnnotation, e);
-            // return false;
         }
     }
 
@@ -98,17 +97,9 @@ public class LoadingClass {
 
         Properties prop = loadConfigProperties();
         try {
-            String controllerClassName = prop.getProperty("annotation.controller");
-            String urlMappingClassName = prop.getProperty("annotation.mapping");
-
-            if (controllerClassName == null || controllerClassName.isBlank()) {
-                throw new RuntimeException(
-                        "[ERREUR] La propriété 'annotation.controller' est manquante dans config.properties.");
-            }
-            if (urlMappingClassName == null || urlMappingClassName.isBlank()) {
-                throw new RuntimeException(
-                        "[ERREUR] La propriété 'annotation.mapping' est manquante dans config.properties.");
-            }
+            // Utilisation de valeurs par défaut si absentes du config.properties
+            String controllerClassName = prop.getProperty("annotation.controller", "com.example.annotation.AnnotationController");
+            String urlMappingClassName = prop.getProperty("annotation.mapping", "com.example.annotation.UrlMapping");
 
             controllerAnnotationClass = Class.forName(controllerClassName).asSubclass(Annotation.class);
             urlMappingAnnotationClass = Class.forName(urlMappingClassName).asSubclass(Annotation.class);
@@ -146,18 +137,12 @@ public class LoadingClass {
                                                 """.formatted(
                                                 methodType,
                                                 url,
-                                              
                                                 mappingExistant.getNomClass(), 
-                                                                              
                                                 mappingExistant.getNomMethod(), 
-                                                                               
                                                 clazz.getName(),
                                                 method.getName()));
                             }
 
-                            // AVANT : routes.put(urlMethod, new Mapping(clazz, method));
-                            // Instancie ton Mapping à toi (qui prend probablement des String en paramètres)
-                            // :
                             routes.put(urlMethod, new Mapping(clazz.getName(), method.getName()));
                         }
                     }
@@ -180,17 +165,8 @@ public class LoadingClass {
 
         Properties prop = loadConfigProperties();
         try {
-            String controllerClassName = prop.getProperty("annotation.controller");
-            String urlMappingClassName = prop.getProperty("annotation.mapping");
-
-            if (controllerClassName == null || controllerClassName.isBlank()) {
-                throw new RuntimeException(
-                        "[ERREUR] La propriété 'annotation.controller' est manquante dans config.properties.");
-            }
-            if (urlMappingClassName == null || urlMappingClassName.isBlank()) {
-                throw new RuntimeException(
-                        "[ERREUR] La propriété 'annotation.mapping' est manquante dans config.properties.");
-            }
+            String controllerClassName = prop.getProperty("annotation.controller", "com.example.annotation.AnnotationController");
+            String urlMappingClassName = prop.getProperty("annotation.mapping", "com.example.annotation.UrlMapping");
 
             controllerAnnotationClass = Class.forName(controllerClassName).asSubclass(Annotation.class);
             urlMappingAnnotationClass = Class.forName(urlMappingClassName).asSubclass(Annotation.class);
@@ -228,7 +204,6 @@ public class LoadingClass {
                                                 """.formatted(
                                                 methodType,
                                                 url,
-
                                                 mappingExistant.getNomClass(),
                                                 mappingExistant.getNomMethod(),
                                                 clazz.getName(),

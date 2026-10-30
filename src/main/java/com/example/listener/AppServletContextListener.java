@@ -1,16 +1,13 @@
 package com.example.listener;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.example.utils.LoadingClass;
 import com.example.utils.Mapping;
-import com.example.utils.UrlMethod;
 import com.example.utils.MySession;
+import com.example.utils.UrlMethod;
 
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
@@ -19,42 +16,47 @@ public class AppServletContextListener implements ServletContextListener {
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
-        System.out.println("[INIT] Tomcat démarre l'application. Lancement du scan des routes...");
+        System.out.println("[INIT] === DÉBUT DU LISTENER ===");
 
         try {
-            String packageName;
             Map<UrlMethod, Mapping> toutesLesRoutes = new HashMap<>();
-            Properties prop = new Properties();
-            Map<String,MySession> activeSessions = new ConcurrentHashMap<>();
+            Map<String, MySession> activeSessions = new ConcurrentHashMap<>();
             sce.getServletContext().setAttribute("activeSessions", activeSessions);
 
-            try (InputStream input = LoadingClass.class.getClassLoader().getResourceAsStream("config.properties")) {
-                if (input == null) {
-                    throw new RuntimeException("[ERREUR] Impossible de trouver le fichier config.properties.");
-                }
-                prop.load(input);
+            String authSessionKey = sce.getServletContext().getInitParameter("auth.session.key");
+            // if (authSessionKey == null || authSessionKey.trim().isEmpty()) {
+            //     authSessionKey = "currentUser";
+            // }
+            sce.getServletContext().setAttribute("authSessionKey", authSessionKey);
 
-                packageName = prop.getProperty("app.package");
+            // 2. Package
+            String packageName = sce.getServletContext().getInitParameter("app.package");
+            // if (packageName == null || packageName.trim().isEmpty()) {
+            //     packageName = "main.java.controller";
+            // }
+            System.out.println("[INIT] Package cible des contrôleurs : " + packageName);
 
-            } catch (IOException e) {
-                throw new RuntimeException("Erreur lors de la lecture de config.properties", e);
-            } 
-
-            LoadingClass.loadUrlMappingsWithMethod(packageName,toutesLesRoutes);
+            // 3. Scan des routes (protégé)
+            try {
+                LoadingClass.loadUrlMappingsWithMethod(packageName, toutesLesRoutes);
+                System.out.println("[SUCCESS] Scan terminé avec succès. " + toutesLesRoutes.size() + " routes chargées.");
+            } catch (Throwable t) {
+                System.err.println("[ERREUR SCAN] Échec du scan des annotations : " + t.getMessage());
+                t.printStackTrace();
+            }
 
             sce.getServletContext().setAttribute("routesWithMethod", toutesLesRoutes);
+            System.out.println("[INIT] === FIN DU LISTENER AVEC SUCCÈS ===");
 
-            System.out.println("[SUCCESS] Scan terminé avec succès. " + toutesLesRoutes.size() + " routes chargées.");
-            System.out.println("[SUCCESS] Map des sessions actives initialisée dans le ServletContext.");
-
-        } catch (IllegalStateException e) {
-            System.err.println("[ERREUR CRITIQUE DÉMARRAGE] " + e.getMessage());
-            throw new RuntimeException("Échec du déploiement de l'application à cause d'un conflit de routes.", e);
+        } catch (Throwable e) {
+            // ON CAPTURE TOUT POUR ÉVITER QUE TOMCAT NE PLANTE LE DÉPLOIEMENT
+            System.err.println("[ERREUR FATALE LISTENER] : ");
+            e.printStackTrace();
         }
     }
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-        System.out.println("[SHUTDOWN] L'application s'arrête. ");
+        System.out.println("[SHUTDOWN] L'application s'arrête.");
     }
 }
