@@ -37,7 +37,6 @@ public class FrontControllerServlet extends HttpServlet {
     private WebApplicationContext springContext;
     private final Gson gson = new Gson();
 
-
     @Override
     public void init() throws ServletException {
         super.init();
@@ -78,19 +77,29 @@ public class FrontControllerServlet extends HttpServlet {
 
             try {
                 Class<?> controllerClass = Class.forName(mapping.getNomClass());
-                Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
 
-                this.springContext.getAutowireCapableBeanFactory().autowireBean(controllerInstance);
+        
+                Object controllerInstance = mapping.getControllerInstance();
+                if (controllerInstance == null) {
+                    synchronized (mapping) {
+                        if (mapping.getControllerInstance() == null) {
+                            controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
+                            this.springContext.getAutowireCapableBeanFactory().autowireBean(controllerInstance);
+                            mapping.setControllerInstance(controllerInstance);
+                            System.out.println("[SINGLETON] Instance unique créée et injectée par Spring pour : " + controllerClass.getName());
+                        } else {
+                            controllerInstance = mapping.getControllerInstance();
+                        }
+                    }
+                }
 
                 Method targetMethod = Utilitaire.findTargetMethod(controllerClass, mapping.getNomMethod());
 
-            
                 if (targetMethod.isAnnotationPresent(Auth.class)) {
                     HttpSession httpSession = req.getSession(false);
                     boolean isAuthenticated = false;
                     Object connectedUser = null;
 
-                    
                     String authSessionKey = (String) getServletContext().getAttribute("authSessionKey");
 
                     if (httpSession != null) {
@@ -111,7 +120,6 @@ public class FrontControllerServlet extends HttpServlet {
                         throw new RuntimeException("Accès refusé : Vous devez être connecté.");
                     }
 
-                   
                     Auth authAnnotation = targetMethod.getAnnotation(Auth.class);
                     String[] requiredRoles = authAnnotation.roles();
 
@@ -138,7 +146,6 @@ public class FrontControllerServlet extends HttpServlet {
                     }
                 }
 
-                
                 Object[] methodArgs = Utilitaire.resolveMethodArguments(targetMethod, req);
 
                 Object result = targetMethod.invoke(controllerInstance, methodArgs);
@@ -184,6 +191,7 @@ public class FrontControllerServlet extends HttpServlet {
 
                 } else if (result instanceof ModelAndView) {
                     ModelAndView mv = (ModelAndView) result;
+                    String viewName = mv.getView();
 
                     Map<String, Object> data = mv.getData();
                     if (data != null) {
@@ -192,16 +200,23 @@ public class FrontControllerServlet extends HttpServlet {
                         }
                     }
 
-                    String prefix = this.getServletContext().getInitParameter("view.prefix");
-                    String suffix = this.getServletContext().getInitParameter("view.suffix");
+                
+                    if (viewName != null && viewName.startsWith("redirect:")) {
+                        String redirectTarget = viewName.substring(9).trim();
+                        String fullRedirectUrl = redirectTarget.startsWith("http") ? redirectTarget : contextPath + (redirectTarget.startsWith("/") ? "" : "/") + redirectTarget;
+                        resp.sendRedirect(fullRedirectUrl);
+                    } else {
+                        String prefix = this.getServletContext().getInitParameter("view.prefix");
+                        String suffix = this.getServletContext().getInitParameter("view.suffix");
 
-                    if (prefix == null)
-                        prefix = "/WEB-INF/views/";
-                    if (suffix == null)
-                        suffix = ".jsp";
+                        if (prefix == null)
+                            prefix = "/WEB-INF/views/";
+                        if (suffix == null)
+                            suffix = ".jsp";
 
-                    String viewPath = prefix + mv.getView() + suffix;
-                    req.getRequestDispatcher(viewPath).forward(req, resp);
+                        String viewPath = prefix + viewName + suffix;
+                        req.getRequestDispatcher(viewPath).forward(req, resp);
+                    }
 
                 } else if (result instanceof String) {
                     resp.setContentType("text/plain;charset=UTF-8");
